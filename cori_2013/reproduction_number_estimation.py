@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 
 
 def prior_instant_R_t(t):
+    return  2.5
     if t <= 15:
         return 2.5
     return 0.7
@@ -43,7 +44,7 @@ def lambda_t(t, incidence_data, w):
     Following appendex 1 of cori 2013. See (eq.3 of equations)
     """
     summation = 0
-    for s in range(1, t+1 ):
+    for s in range(1, t+1):
         summation += (incidence_data[t-s] * w(s))
 
     return summation
@@ -66,12 +67,13 @@ def estimate_R_t(t, pi, incidence_data, w, a = 1, b = 5):
     summation_lambdas = 0
     for s in range(t - pi, t):
         summation += (incidence_data[s])
-        summation_lambdas = lambda_t(s)
+        summation_lambdas += lambda_t(s, incidence_data, w)
 
     alpha = a + summation
     beta = (1/b) + summation_lambdas
 
-    estimate = np.random.gamma(alpha, 1/beta)
+    #estimate = np.random.gamma(alpha, 1/beta)
+    estimate = alpha/beta
     return estimate
 
 def infection_profile(mean, std_deviation):
@@ -86,7 +88,6 @@ def infection_profile(mean, std_deviation):
 
     beta = mean / (std_deviation ** 2) #since, mean = alpha/beta and variance = alpha/(beta^2)
     alpha = mean * beta
-
 
     def prob(s):
 
@@ -105,13 +106,20 @@ def infection_profile(mean, std_deviation):
 if __name__ == "__main__":
     """Following appendix 6"""
     T = 50
+    pandemics = 100
+    window_size = 7
 
     incidence_across_simulations = [[] for i in range(1, T+1)]
-    for i in range(100):
+    reproduction_across_simulations = [[] for i in range(window_size, T+1)]
+    min_day = []
+
+    for i in range(pandemics):
         mean = 8.4
         std_deviation = 3.8
         incidence_data = [0,10]
         w = infection_profile(mean, std_deviation)
+        reproduction_number = [0]
+        day_found = False
         probs = []
 
         for t in range(10):
@@ -119,9 +127,20 @@ if __name__ == "__main__":
 
         for t in range(2, T+1):
             incidence_data.append(estimate_I_t(t, instant_R_t= prior_instant_R_t, w = w, incidence_data=incidence_data))
+            if t > window_size:
+                reproduction_number.append(estimate_R_t(t, window_size, incidence_data=incidence_data, w=w))
+            if not day_found and np.sum(incidence_data) > 12:
+                min_day.append(t)
+                day_found = not day_found
+
+
 
         for i in range(len(incidence_data[1:])):
             incidence_across_simulations[i].append(incidence_data[i+1])
+
+        for i in range(len(reproduction_number)):
+            reproduction_across_simulations[i].append(reproduction_number[i])
+
 
 
         """ 
@@ -130,16 +149,38 @@ if __name__ == "__main__":
         plt.ylabel("Probability")
         plt.show()
         """
-        print(len(range(T)), len(incidence_data))
-        plt.scatter(range(T), incidence_data[1:], color = "black", marker='x')
+        #print(i)
+        #plt.scatter(range(10, T), reproduction_number[10:], color = "black", marker='x')
 
-        print(min(incidence_data), max(incidence_data), np.mean(incidence_data))
+        #print(min(incidence_data), max(incidence_data), np.mean(incidence_data))
 
-    means = [np.mean(i) for i in incidence_across_simulations]
-    plt.plot(range(T), means,  color = "red")
+    #means = [np.mean(i) for i in incidence_across_simulations]
+    #plt.plot(range(T), means,  color = "red")
+
+    means = []
+    start = []
+    end = []
+    days = []
+    #print(min_day)
+    #print(max(min_day))
+    for i in range(len(reproduction_across_simulations)):
+        confidence = 0.95
+        data = reproduction_across_simulations[i]
+        n = len(data)
+        m = np.mean(data)
+        means.append(m)
+        days.append(i)
+        std_err = stats.sem(data)
+        h = std_err * stats.t.ppf((1 + confidence) / 2, n - 1)
+        start.append(m - h)
+        end.append(m + h)
+
+
+    plt.fill_between(days[max(min_day):], start[max(min_day):], end[max(min_day):], color = "black", alpha =0.25)
+    plt.plot(days[max(min_day):], means[max(min_day):], color = "black")
 
     plt.xlabel("Time (Days)")
-    plt.ylabel("Incidence")
+    plt.ylabel("Instant R_t")
     plt.show()
 
 
