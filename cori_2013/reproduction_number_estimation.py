@@ -1,6 +1,7 @@
 import numpy as np
 from scipy import stats
 import matplotlib.pyplot as plt
+import math
 
 
 
@@ -52,7 +53,7 @@ def lambda_t(t, incidence_data, w):
 
 
 
-def estimate_R_t(t, pi, incidence_data, w, a = 1, b = 5):
+def estimate_R_t(t, pi, incidence_data, w, a = 1, b = 5, n = 1):
     """
     :param t: t (in days) at which to re_estimate R_t
     :param pi: the size of the window
@@ -72,9 +73,11 @@ def estimate_R_t(t, pi, incidence_data, w, a = 1, b = 5):
     alpha = a + summation
     beta = (1/b) + summation_lambdas
 
-    #estimate = np.random.gamma(alpha, 1/beta)
-    estimate = alpha/beta
-    return estimate
+    estimates = []
+    for i in range(n):
+        estimates.append(np.random.gamma(alpha, 1/beta))
+    estimate2 = alpha/beta
+    return estimates
 
 def infection_profile(mean, std_deviation):
     """
@@ -89,29 +92,39 @@ def infection_profile(mean, std_deviation):
     beta = mean / (std_deviation ** 2) #since, mean = alpha/beta and variance = alpha/(beta^2)
     alpha = mean * beta
 
+    probs = {}
     def prob(s):
-
         int_s = int(s)
         assert np.allclose([int_s], [s])  # making sure s is an integer
         s += 1
-        prob = (np.convolve(s,stats.gamma.cdf(s, a = alpha, scale = 1/beta))) + (np.convolve((s - 2), stats.gamma.cdf(s - 2, a = alpha, scale = 1/beta)) ) - \
-               (np.convolve(2,  np.convolve((s - 1) , stats.gamma.cdf(s - 1, a = alpha, scale = 1/beta)))) + \
-               ((alpha * 1/beta)*(2*(stats.gamma.cdf(s-1, a = alpha + 1, scale = 1/beta))- stats.gamma.cdf(s - 2, a = alpha + 1, scale = 1/beta) - \
-                                  stats.gamma.cdf(s, a = alpha + 1, scale = 1/beta)))
-
-
+        if s in probs:
+            return probs[s]
+        else:
+            prob = (np.convolve(s,stats.gamma.cdf(s, a = alpha, scale = 1/beta))) + (np.convolve((s - 2), stats.gamma.cdf(s - 2, a = alpha, scale = 1/beta)) ) - \
+                   (np.convolve(2,  np.convolve((s - 1) , stats.gamma.cdf(s - 1, a = alpha, scale = 1/beta)))) + \
+                   ((alpha * 1/beta)*(2*(stats.gamma.cdf(s-1, a = alpha + 1, scale = 1/beta))- stats.gamma.cdf(s - 2, a = alpha + 1, scale = 1/beta) - \
+                                      stats.gamma.cdf(s, a = alpha + 1, scale = 1/beta)))
+        probs[s] = prob[0]
         return prob[0]
     return prob
 
 if __name__ == "__main__":
     """Following appendix 6"""
     T = 50
-    pandemics = 100
-    window_size = 7
+    pandemics = 1
+    window_size = 1
+    N = 100
 
     incidence_across_simulations = [[] for i in range(1, T+1)]
     reproduction_across_simulations = [[] for i in range(window_size, T+1)]
     min_day = []
+
+    means = []
+    start = []
+    end = []
+    days = []
+
+
 
     for i in range(pandemics):
         mean = 8.4
@@ -126,24 +139,67 @@ if __name__ == "__main__":
             probs.append(w(t))
 
         for t in range(2, T+1):
-            incidence_data.append(estimate_I_t(t, instant_R_t= prior_instant_R_t, w = w, incidence_data=incidence_data))
-            if t > window_size:
-                reproduction_number.append(estimate_R_t(t, window_size, incidence_data=incidence_data, w=w))
-            if not day_found and np.sum(incidence_data) > 12:
-                min_day.append(t)
-                day_found = not day_found
+
+            i_t_estimates = []
+            r_t_estimates = np.zeros((N, N))
+            for iter_num in range(N):
+                print(t,iter_num)
+                r_t_estimates_mean_constant = []
+                current_incidence = incidence_data.copy()
+                mean_si = np.random.normal(loc = mean, scale = 1.5)
+                std_si = math.inf
+
+                while std_si > mean_si:
+                    std_si = np.random.normal(loc = std_deviation, scale = 0.5)
+                w = infection_profile(mean_si, std_si)
+
+                current_incidence.append(estimate_I_t(t, instant_R_t= prior_instant_R_t, w = w, incidence_data=current_incidence))
+
+                if t > window_size:
+                    r_t_estimates[iter_num] = (estimate_R_t(t, window_size, incidence_data=current_incidence, w=w, n = N))
+                if not day_found and np.sum(current_incidence) > 12:
+                    min_day.append(t)
+                    day_found = not day_found
+
+                i_t_estimates.append(current_incidence[-1])
+
+            incidence_data.append(np.mean(i_t_estimates))
+
+            confidence = 0.95
+            data = np.ndarray.flatten(r_t_estimates)
+            m = np.mean(data)
+            std_err = stats.sem(data)
+            h = std_err * stats.t.ppf((1 + confidence) / 2, (N*N) - 1)
+            start.append(m - h)
+            end.append(m + h)
+            days.append(t)
+            if t > 7:
+                plt.scatter([t] * (N * N), np.ndarray.flatten(r_t_estimates), color = "black", marker='x', s = 0.1)
+
+    print(days)
+    print(start)
+    plt.fill_between(days[max(min_day):], start[max(min_day):], end[max(min_day):], color="blue", alpha=1)
 
 
 
+    plt.xlabel("Time (Days)")
+    plt.ylabel("Instant R_t")
+    plt.show()
+
+
+
+
+
+    """
         for i in range(len(incidence_data[1:])):
             incidence_across_simulations[i].append(incidence_data[i+1])
 
         for i in range(len(reproduction_number)):
             reproduction_across_simulations[i].append(reproduction_number[i])
+        """
 
 
-
-        """ 
+    """ 
         plt.scatter(range(10), probs)
         plt.xlabel("Serial Interval (Days)")
         plt.ylabel("Probability")
@@ -163,6 +219,7 @@ if __name__ == "__main__":
     days = []
     #print(min_day)
     #print(max(min_day))
+    """
     for i in range(len(reproduction_across_simulations)):
         confidence = 0.95
         data = reproduction_across_simulations[i]
@@ -174,16 +231,23 @@ if __name__ == "__main__":
         h = std_err * stats.t.ppf((1 + confidence) / 2, n - 1)
         start.append(m - h)
         end.append(m + h)
+    """
 
 
-    plt.fill_between(days[max(min_day):], start[max(min_day):], end[max(min_day):], color = "black", alpha =0.25)
-    plt.plot(days[max(min_day):], means[max(min_day):], color = "black")
+
+    """
+    each_reproduction = np.transpose(reproduction_across_simulations)
+    for i in range(len(each_reproduction)):
+        plt.plot(days[max(min_day):], each_reproduction[i][max(min_day):], color = "black", linewidth = 0.25)
+
+    plt.fill_between(days[max(min_day):], start[max(min_day):], end[max(min_day):], color="blue", alpha = 1)
+    #plt.plot(days[max(min_day):], means[max(min_day):], color = "black")
 
     plt.xlabel("Time (Days)")
     plt.ylabel("Instant R_t")
     plt.show()
 
-
+    """
 
 
 
