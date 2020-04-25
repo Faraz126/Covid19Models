@@ -8,6 +8,9 @@ import math
 
 
 def prior_instant_R_t(t):
+    a = 1
+    b = 5
+    return np.random.gamma(shape= a, scale = b)
     return  2.5
     if t <= 15:
         return 2.5
@@ -74,10 +77,15 @@ def estimate_R_t(t, pi, incidence_data, w, a = 1, b = 5, n = 1):
     beta = (1/b) + summation_lambdas
 
     estimates = []
+    estimates2 = []
+    vals = stats.gamma.ppf([0.025, 0.975], a = alpha, scale = 1/beta)
+    #print(vals)
+
     for i in range(n):
         estimates.append(np.random.gamma(alpha, 1/beta))
-    estimate2 = alpha/beta
-    return estimates
+
+        estimates2.append(alpha/beta)
+    return vals, estimates2[0]
 
 def infection_profile(mean, std_deviation):
     """
@@ -108,28 +116,101 @@ def infection_profile(mean, std_deviation):
         return prob[0]
     return prob
 
-if __name__ == "__main__":
+
+def read_file(file_name):
+    """
+    :param file_name: reads data from the txt file.
+    :return: two arrays denoting days and no_of_cases (I_t)
+    """
+
+    txtFile = open(file_name)
+    txtFile.readline() #excluding first line
+    data = txtFile.readlines()
+    days, incidence_data = [],[]
+    for line in data:
+        line = line.strip()
+        line_split = line.split(sep = '\t')
+        days.append(int(line_split[0]))
+        incidence_data.append(int(line_split[1]))
+    return days, incidence_data
+
+def model_epidemic(data_file, prior_rt, mean_si, sd_si, window = 1):
+    days, incidence_data = read_file(data_file)
+    w = infection_profile(mean_si, sd_si)
+    T = days[-1]
+    serial_interval_prob = []
+    for t in range(T):
+        serial_interval_prob.append(w(t))
+
+
+
+    plt.bar([i + 1 for i in range(T)], serial_interval_prob, width = 0.4)
+    plt.xlabel("Days T")
+    plt.ylabel("Probability of w(t)")
+    plt.xlim((0, 12))
+    plt.grid()
+    plt.show()
+
+
+
+    plt.plot([i + 1 for i in range(T)], incidence_data)
+    plt.xlabel("Days T")
+    plt.ylabel("Incidence per day")
+    plt.show()
+
+
+
+    for i in range(T):
+        if sum(incidence_data[:i + 1]) >= 11:
+            day = i
+            day = 7
+            break
+
+    estimates_of_R_t = []
+    for t in range(T):
+        estimates_of_R_t.append(estimate_R_t(t, 7, incidence_data = incidence_data, w = w, n = 100))
+
+
+    means, start, end = [],[],[]
+    for i in range(T):
+        m = estimates_of_R_t[i][-1]
+        means.append(m)
+        start.append(estimates_of_R_t[i][0][0])
+        end.append(estimates_of_R_t[i][0][1])
+
+    #print(start)
+    #print(end)
+    plt.fill_between([i + 1 for i in range(T)][day:], start[(day):], end[(day):], color="black", alpha=0.25)
+    #print(estimates_of_R_t.index(max(estimates_of_R_t[day:])))
+    plt.plot([i + 1 for i in range(T)][day:], means[day:], color = 'black')
+    plt.xlabel("Days T")
+    plt.ylabel("R_t")
+    plt.show()
+
+
+
+
+def estimate_i_t_and_r_t():
     """Following appendix 6"""
+
     T = 50
     pandemics = 1
     window_size = 1
-    N = 100
-
-    incidence_across_simulations = [[] for i in range(1, T+1)]
-    reproduction_across_simulations = [[] for i in range(window_size, T+1)]
+    N = 200
+    incidence_across_simulations = [[] for i in range(1, T + 1)]
+    reproduction_across_simulations = [[] for i in range(window_size, T + 1)]
     min_day = []
 
     means = []
-    start = []
-    end = []
+    start = [[], [], []]
+    end = [[], [], []]
     days = []
-
-
+    intervals = [0.10, 0.30, 0.50]
 
     for i in range(pandemics):
         mean = 8.4
         std_deviation = 3.8
-        incidence_data = [0,10]
+        incidence_data = [0, 10]
         w = infection_profile(mean, std_deviation)
         reproduction_number = [0]
         day_found = False
@@ -138,57 +219,59 @@ if __name__ == "__main__":
         for t in range(10):
             probs.append(w(t))
 
-        for t in range(2, T+1):
+        for t in range(2, T + 1):
 
             i_t_estimates = []
             r_t_estimates = np.zeros((N, N))
             for iter_num in range(N):
-                print(t,iter_num)
+                print(t, iter_num)
                 r_t_estimates_mean_constant = []
                 current_incidence = incidence_data.copy()
-                mean_si = np.random.normal(loc = mean, scale = 1.5)
+                mean_si = np.random.normal(loc=mean, scale=1.5)
                 std_si = math.inf
 
                 while std_si > mean_si:
-                    std_si = np.random.normal(loc = std_deviation, scale = 0.5)
+                    std_si = np.random.normal(loc=std_deviation, scale=0.5)
                 w = infection_profile(mean_si, std_si)
 
-                current_incidence.append(estimate_I_t(t, instant_R_t= prior_instant_R_t, w = w, incidence_data=current_incidence))
+                current_incidence.append(
+                    estimate_I_t(t, instant_R_t=prior_instant_R_t, w=w, incidence_data=current_incidence))
 
                 if t > window_size:
-                    r_t_estimates[iter_num] = (estimate_R_t(t, window_size, incidence_data=current_incidence, w=w, n = N))
-                if not day_found and np.sum(current_incidence) > 12:
-                    min_day.append(t)
-                    day_found = not day_found
+                    r_t_estimates[iter_num] = (estimate_R_t(t, window_size, incidence_data=current_incidence, w=w, n=N))
 
                 i_t_estimates.append(current_incidence[-1])
 
             incidence_data.append(np.mean(i_t_estimates))
+            if not day_found and np.sum(current_incidence) > 12:
+                min_day.append(t)
+                day_found = not day_found
 
-            confidence = 0.95
-            data = np.ndarray.flatten(r_t_estimates)
-            m = np.mean(data)
-            std_err = stats.sem(data)
-            h = std_err * stats.t.ppf((1 + confidence) / 2, (N*N) - 1)
-            start.append(m - h)
-            end.append(m + h)
+            for i in range(len(intervals)):
+                confidence = intervals[i]
+                data = np.ndarray.flatten(r_t_estimates)
+                m = np.mean(data)
+                std_err = stats.sem(data)
+                h = std_err * stats.t.ppf((1 + confidence) / 2, (N * N) - 1)
+                start[i].append(m - h)
+                end[i].append(m + h)
             days.append(t)
             if t > 7:
-                plt.scatter([t] * (N * N), np.ndarray.flatten(r_t_estimates), color = "black", marker='x', s = 0.1)
+                pass
+                # plt.scatter([t] * (N * N), np.ndarray.flatten(r_t_estimates), color = "black", marker='x', s = 0.1)
 
     print(days)
     print(start)
-    plt.fill_between(days[max(min_day):], start[max(min_day):], end[max(min_day):], color="blue", alpha=1)
 
+    for i in range(len(intervals)):
+        plt.fill_between(days[max(min_day):], start[i][max(min_day):], end[i][max(min_day):], alpha=1,
+                         label=str(intervals[i] * 100) + "%")
 
+        plt.xlabel("Time (Days)")
+        plt.ylabel("Instant R_t")
+        plt.legend()
 
-    plt.xlabel("Time (Days)")
-    plt.ylabel("Instant R_t")
-    plt.show()
-
-
-
-
+        plt.show()
 
     """
         for i in range(len(incidence_data[1:])):
@@ -198,27 +281,26 @@ if __name__ == "__main__":
             reproduction_across_simulations[i].append(reproduction_number[i])
         """
 
-
     """ 
         plt.scatter(range(10), probs)
         plt.xlabel("Serial Interval (Days)")
         plt.ylabel("Probability")
         plt.show()
         """
-        #print(i)
-        #plt.scatter(range(10, T), reproduction_number[10:], color = "black", marker='x')
+    # print(i)
+    # plt.scatter(range(10, T), reproduction_number[10:], color = "black", marker='x')
 
-        #print(min(incidence_data), max(incidence_data), np.mean(incidence_data))
+    # print(min(incidence_data), max(incidence_data), np.mean(incidence_data))
 
-    #means = [np.mean(i) for i in incidence_across_simulations]
-    #plt.plot(range(T), means,  color = "red")
+    # means = [np.mean(i) for i in incidence_across_simulations]
+    # plt.plot(range(T), means,  color = "red")
 
     means = []
     start = []
     end = []
     days = []
-    #print(min_day)
-    #print(max(min_day))
+    # print(min_day)
+    # print(max(min_day))
     """
     for i in range(len(reproduction_across_simulations)):
         confidence = 0.95
@@ -233,8 +315,6 @@ if __name__ == "__main__":
         end.append(m + h)
     """
 
-
-
     """
     each_reproduction = np.transpose(reproduction_across_simulations)
     for i in range(len(each_reproduction)):
@@ -248,6 +328,11 @@ if __name__ == "__main__":
     plt.show()
 
     """
+
+if __name__ == "__main__":
+    model_epidemic("1918fluIncidence.txt", prior_instant_R_t, 2.6, 1.5, window= 7)
+
+
 
 
 
