@@ -8,9 +8,11 @@ import math
 
 
 def prior_instant_R_t(t):
+    '''
     a = 1
     b = 5
     return np.random.gamma(shape= a, scale = b)
+    '''
     return  2.5
     if t <= 15:
         return 2.5
@@ -187,6 +189,120 @@ def model_epidemic(data_file, prior_rt, mean_si, sd_si, window = 1):
     plt.ylabel("R_t")
     plt.show()
 
+def simulate_i_t_and_r_t():
+    T = 50
+    pandemics = 100
+    window_size = 7
+    min_day = []
+
+    incidence_aross_pandemics = []
+    mean = 8.4
+    std_deviation = 3.8
+    w = infection_profile(mean, std_deviation)
+    starts = [[] for i in range(T)]
+    ends = [[] for i in range(T)]
+    means = [[] for i in range(pandemics)]
+
+    for pandemic_num in range(pandemics):
+        incidence_data = [10]
+        day_found = False
+        probs = []
+        reproduction_number = []
+
+        for t in range(1, T + 1):
+
+            I_t = estimate_I_t(t, prior_instant_R_t, incidence_data, w)
+            incidence_data.append(I_t)
+
+            if t > window_size:
+                reproduction_number.append(estimate_R_t(t, pi=window_size, incidence_data=incidence_data, w=w))
+
+            if not day_found and sum(incidence_data) > (11 + 10) and t >= window_size:
+                min_day.append(t)
+                day_found = True
+
+        for j in range(len(reproduction_number)):
+            starts[j].append(reproduction_number[j][0][0])
+            ends[j].append(reproduction_number[j][0][1])
+            means[pandemic_num].append(reproduction_number[j][1])
+
+
+
+
+        incidence_aross_pandemics.append(incidence_data)
+        plt.scatter(range(T + 1), incidence_data, marker='x', color='black')
+    plt.show()
+    start_day = max(min_day)
+    fig, axs = plt.subplots(3, 3)
+    """
+    #ploting appendix 6
+    starts = [np.min(i) for i in starts]
+    ends = [np.max(i) for i in ends]
+
+    
+    print(start_day)
+    axs[0].fill_between(list(range(T))[start_day:], starts[start_day:], ends[start_day:], color="black",
+                                    alpha=0.25)
+    for mean in range(len(means)):
+        axs[0].plot(list(range(T))[start_day:], means[mean][start_day:], color="black")
+    axs[0].set_xlabel("Days (T)")
+    axs[0].set_ylabel("Instant R_t")
+    axs[0].set_title("Appendix 6")
+    """
+
+    probs = [1.0 - (0.1 * i) for i in range(9)]
+
+
+
+
+    for i in range(len(probs)):
+        p = probs[i]
+        starts = [[] for i in range(window_size + 1, T + 1)]
+        ends = [[] for i in range(window_size + 1, T + 1)]
+        means = [[] for i in range(pandemics)]
+
+
+        for pandemic_num in range(pandemics):
+            incidence_data = incidence_aross_pandemics[pandemic_num]
+            reported_cases = [np.random.binomial(i, p) for i in incidence_data]
+
+
+            reproduction_number = []
+            for t in range(1, T + 1):
+                if t > window_size:
+                    reproduction_number.append(estimate_R_t(t, pi = window_size, incidence_data = reported_cases, w=w))
+
+            for j in range(len(reproduction_number)):
+                starts[j].append(reproduction_number[j][0][0])
+                ends[j].append(reproduction_number[j][0][1])
+                means[pandemic_num].append(reproduction_number[j][1])
+
+        start_day = max(min_day)
+        start_day = start_day - window_size
+
+        if start_day < 0:
+            start_day = 0
+        starts = [np.min(i) for i in starts]
+        ends = [np.max(i) for i in ends]
+
+
+        axs[i // 3, i % 3].fill_between(list(range(window_size, T))[start_day:], starts[start_day:], ends[start_day:], color="black", alpha=0.25)
+        for mean in range(len(means)):
+            axs[i // 3, i % 3].plot(list(range(window_size, T))[start_day:], means[mean][start_day:], color = "black")
+        #axs[i // 3, i % 3].set_xlabel("Days (T)")
+        axs[i // 3, i % 3].set_ylabel("Instant R_t")
+        axs[i // 3, i % 3].set_title("p = " + str(round(p, 2)))
+        axs[i // 3, i % 3].set_ylim(bottom = 0, top = 20)
+    plt.show()
+    # plt.plot(days[max(min_day):], means[max(min_day):], color = "black")
+
+
+
+
+
+
+
+
 
 
 
@@ -330,8 +446,8 @@ def estimate_i_t_and_r_t():
     """
 
 if __name__ == "__main__":
-    model_epidemic("1918fluIncidence.txt", prior_instant_R_t, 2.6, 1.5, window= 7)
-
+    #model_epidemic("1918fluIncidence.txt", prior_instant_R_t, 2.6, 1.5, window= 7)
+    simulate_i_t_and_r_t()
 
 
 
