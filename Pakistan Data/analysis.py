@@ -58,7 +58,7 @@ def lambda_t(t, incidence_data, w):
 
 
 
-def estimate_R_t(t, pi, incidence_data, w, a = 1, b = 5, n = 1):
+def estimate_R_t(t, pi, incidence_data, w, a = 1, b = 5, n = 1, sample = False):
     """
     :param t: t (in days) at which to re_estimate R_t
     :param pi: the size of the window
@@ -83,9 +83,11 @@ def estimate_R_t(t, pi, incidence_data, w, a = 1, b = 5, n = 1):
     vals = stats.gamma.ppf([0.025, 0.975], a = alpha, scale = 1/beta)
     #print(vals)
 
-    for i in range(n):
-        estimates.append(np.random.gamma(alpha, 1/beta))
-        estimates2.append(alpha/beta)
+    estimates2.append(alpha/beta)
+    if sample:
+        for i in range(n):
+            estimates.append(np.random.gamma(alpha, 1 / beta))
+        return estimates
     return vals, estimates2[0]
 
 def infection_profile(mean, std_deviation):
@@ -117,6 +119,13 @@ def infection_profile(mean, std_deviation):
         return prob[0]
     return prob
 
+def mean_confidence_interval(data, confidence=0.95):
+    a = 1.0 * np.array(data)
+    n = len(a)
+    m, se = np.mean(a), stats.sem(a)
+    h = se * stats.t.ppf((1 + confidence) / 2., n-1)
+    return m, m-h, m+h
+
 
 def read_file(file_name):
     """
@@ -135,7 +144,7 @@ def read_file(file_name):
         incidence_data.append(int(line_split[1]))
     return days, incidence_data
 
-def model_epidemic(data_file, prior_rt, mean_si, sd_si, window = 1, plot_w = False, plot_incidence = False, plot_r_t = False, plot_surface = None, label = ''):
+def model_epidemic(data_file, prior_rt, mean_si, sd_si, window = 1, uncertain_w = False,  plot_w = False, plot_incidence = False, plot_r_t = False, plot_surface = None, label = ''):
     days, incidence_data = read_file(data_file)
     w = infection_profile(mean_si, sd_si)
     T = days[-1]
@@ -153,6 +162,7 @@ def model_epidemic(data_file, prior_rt, mean_si, sd_si, window = 1, plot_w = Fal
 
 
     if plot_incidence:
+        print(max(incidence_data))
         plot_surface.plot([i + 1 for i in range(T)], incidence_data, label = label)
         plot_surface.set_xlabel("Days T")
         plot_surface.set_ylabel("Incidence per day")
@@ -160,25 +170,54 @@ def model_epidemic(data_file, prior_rt, mean_si, sd_si, window = 1, plot_w = Fal
 
 
     if plot_r_t:
+        n = 1
         for i in range(T):
             if sum(incidence_data[:i + 1]) >= 11 and i > window:
                 day = i
                 break
 
-        estimates_of_R_t = []
-        for t in range(T):
-            estimates_of_R_t.append(estimate_R_t(t, window, incidence_data = incidence_data, w = w))
+        if uncertain_w:
+            N = 100
+            estimates_of_R_t = []
+            for t in range(T):
+                posterior_distribution_R_t = np.zeros((N, N))
+                for k in range(N):
+                    sample_mean = np.random.normal(mean_si, 1.5)
+                    sample_SI = sample_mean + 1
+                    while sample_SI > sample_mean:
+                        sample_SI = np.random.normal(sd_si, 0.5)
+                    w = infection_profile(sample_mean, sample_SI)
+                    posterior_distribution_R_t[k] = estimate_R_t(t, window, incidence_data = incidence_data, w = w, n = N, sample= True)
+
+                posterior_distribution_R_t = np.ndarray.flatten(posterior_distribution_R_t)
+                mean, start, end = mean_confidence_interval(posterior_distribution_R_t)
+                median = np.mean(posterior_distribution_R_t)
+                estimates_of_R_t.append([(start, end), median])
+                print(t, start, end)
 
 
-        means, start, end = [],[],[]
-        for i in range(T):
-            m = estimates_of_R_t[i][-1]
-            means.append(m)
-            start.append(estimates_of_R_t[i][0][0])
-            end.append(estimates_of_R_t[i][0][1])
 
-        #print(start)
-        #print(end)
+            means, start, end = [],[],[]
+            for i in range(T):
+                m = estimates_of_R_t[i][-1]
+                means.append(m)
+                start.append(estimates_of_R_t[i][0][0])
+                end.append(estimates_of_R_t[i][0][1])
+        else:
+            estimates_of_R_t = []
+            for t in range(T):
+                estimates_of_R_t.append(estimate_R_t(t, window, incidence_data=incidence_data, w=w, n=n))
+
+            means, start, end = [], [], []
+            for i in range(T):
+                m = estimates_of_R_t[i][-1]
+                means.append(m)
+                start.append(estimates_of_R_t[i][0][0])
+                end.append(estimates_of_R_t[i][0][1])
+
+
+
+
         plot_surface.fill_between([i + 1 for i in range(T)][day:], start[(day):], end[(day):], alpha=0.25)
         #print(estimates_of_R_t.index(max(estimates_of_R_t[day:])))
         plot_surface.plot([i + 1 for i in range(T)][day:], means[day:], label = label)
@@ -186,21 +225,28 @@ def model_epidemic(data_file, prior_rt, mean_si, sd_si, window = 1, plot_w = Fal
         plot_surface.set_ylabel("R_t")
 
 
-names = ["punjab", "sindh", "GB", "ICT", "KPK", "AJK", "balochistan", "total"]
+names = ["punjab", "sindh", "GB", "ICT", "KPK", "AJK", "balochistan", "Pakistan", "United Kingdom", "Italy", "Spain"]
 names = [i + ".txt" for i in names]
 
-select = names[0], names[1], names[-1]
+select = [names[-2]]
 
 
-fig, axs = plt.subplots(1, 3)
+fig, axs = plt.subplots(1,2)
 
 for i in range(len(select)):
     name = select[i]
-    plot_surface = axs[i % 3]
-    model_epidemic(name, prior_rt=prior_instant_R_t, window = 7, mean_si= 8.4, sd_si= 3.8, plot_r_t= True, plot_surface= plot_surface)
+    plot_surface = axs[0]
+    model_epidemic(name, prior_rt=prior_instant_R_t, window = 7, mean_si= 8.4, sd_si= 3.8, plot_incidence= True, plot_surface= plot_surface)
     plot_surface.axhline(1, ls='--', label = '1')
     plot_surface.legend()
-    plot_surface.set_ylim((0, 3))
+    #plot_surface.set_ylim((0, 5))
+    plot_surface.set_title(name[:-4])
+    plot_surface = axs[1]
+    model_epidemic(name, prior_rt=prior_instant_R_t, window=7, mean_si=8.4, sd_si=3.8, plot_r_t=True,
+                   plot_surface=plot_surface)
+    plot_surface.axhline(1, ls='--', label='1')
+    plot_surface.legend()
+    plot_surface.set_ylim((0, 5))
     plot_surface.set_title(name[:-4])
 
 #plt.grid()
