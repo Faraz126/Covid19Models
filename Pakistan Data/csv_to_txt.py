@@ -58,8 +58,8 @@ def world_data_to_txt(country_name):
         file.writelines(lines)
 
 #csv_to_txt("data.csv")
-world_data_to_txt("Italy")
-world_data_to_txt("Spain")
+world_data_to_txt("China")
+#world_data_to_txt("Spain")
 
 
 

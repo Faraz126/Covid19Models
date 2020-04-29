@@ -1,5 +1,5 @@
 import numpy as np
-from scipy import stats
+from scipy import stats, spatial
 import matplotlib.pyplot as plt
 import math
 
@@ -17,6 +17,13 @@ def prior_instant_R_t(t):
     if t <= 15:
         return 2.5
     return 0.7
+
+def predict_I_t(t, r_t, incidence_data, w):
+    summation = lambda_t(t, incidence_data, w)
+
+    prediction = r_t * summation
+    conf = stats.poisson.interval(0.95, prediction)
+    return conf, prediction
 
 def estimate_I_t(t, instant_R_t, incidence_data, w):
     '''
@@ -119,6 +126,12 @@ def infection_profile(mean, std_deviation):
         return prob[0]
     return prob
 
+
+def truncated_normal(mean, sd, lower, upper, n = 1):
+    a, b = (lower - mean) / sd, (upper - mean) / sd
+    return stats.truncnorm.rvs(a,b, loc = mean, scale = sd, size = n)
+
+
 def mean_confidence_interval(data, confidence=0.95):
     a = 1.0 * np.array(data)
     n = len(a)
@@ -144,31 +157,159 @@ def read_file(file_name):
         incidence_data.append(int(line_split[1]))
     return days, incidence_data
 
-def model_epidemic(data_file, prior_rt, mean_si, sd_si, window = 1, uncertain_w = False,  plot_w = False, plot_incidence = False, plot_r_t = False, plot_surface = None, label = ''):
+def plot_serial_interval(t, probability, label = ''):
+    t = list(t)
+    plot_surface.bar(t, probability, width=0.4, label=label)
+    plot_surface.set_xlabel("Days T")
+    plot_surface.set_ylabel("Probability of w(t)")
+
+
+def plot_incidence_data(t, data, label = ''):
+    plot_surface.bar(list(t), data, label=label)
+    plot_surface.set_xlabel("Days T")
+    plot_surface.set_ylabel("Incidence per day")
+    plot_surface.grid()
+
+def plot_estimates_r_t(t, starts, ends, means, label = ''):
+    assert len(t) == len(starts) == len(ends) == len(means)
+    plot_surface.fill_between(list(t), starts, ends, alpha=0.25)
+    # print(estimates_of_R_t.index(max(estimates_of_R_t[day:])))
+    plot_surface.plot(list(t), means, label=label)
+    plot_surface.set_xlabel("Days T")
+    plot_surface.set_ylabel("R_t")
+
+
+def model_epidemic(data_file, mean_si, sd_si, window = 1, plot_start_day = 7,  uncertain_w = False,  plot_w = False, plot_incidence = False, plot_r_t = False, plot_surface = None, label = '', with_prediction = False):
     days, incidence_data = read_file(data_file)
+    #incidence_data = [np.random.negative_binomial(i, 0.2) + i - 1 for i in incidence_data]
     w = infection_profile(mean_si, sd_si)
     T = days[-1]
     serial_interval_prob = []
     for t in range(T):
         serial_interval_prob.append(w(t))
 
-
-    if plot_w:
-
-        plot_surface.bar([i + 1 for i in range(T)], serial_interval_prob, width = 0.4, label = label)
-        plot_surface.set_xlabel("Days T")
-        plot_surface.set_ylabel("Probability of w(t)")
-
-
-
     if plot_incidence:
-        print(max(incidence_data))
-        plot_surface.plot([i + 1 for i in range(T)], incidence_data, label = label)
-        plot_surface.set_xlabel("Days T")
-        plot_surface.set_ylabel("Incidence per day")
-        plot_surface.grid()
+        if not with_prediction:
+            plot_incidence_data(range(T), incidence_data, label=label)
+            return
+        else:
+            #plot_surface.scatter(range(1, T+ 1), incidence_data, zorder=20, marker="x", label="Actual Readings")
+            #plot_surface.plot(range(1, T+1), incidence_data, zorder=0, label="test data")
+            train_data = incidence_data[:-6]
+            test_data = incidence_data[-6:]
+            predicted = []
+            estimates_of_R_t = []
+            current_day = 0
+
+            for t in range(len(train_data)):
+                estimates_of_R_t.append(estimate_R_t(current_day, window, incidence_data=train_data, w=w))
+                current_day += 1
+
+            plot_surface.plot(range(1, len(train_data) + 1), train_data, zorder = 0, label = "test data")
+            plot_surface.plot(range(len(train_data), len(train_data) + len(test_data) + 1), [train_data[-1]] + test_data, zorder = 5, label = "train data")
+
+            for t in range(len(test_data)):
+                estimates_of_R_t.append(estimate_R_t(current_day, window, incidence_data=train_data,
+                                                     w=w))  # getting r_t for next prediction
+                predicted.append(predict_I_t(current_day, estimates_of_R_t[-1][-1], incidence_data = train_data, w=w)) #getting our prediction using last value of R_t
+                train_data.append(test_data[t]) #adding actual value to train data
+                current_day += 1
 
 
+            starts, ends, means = [],[], []
+
+            for t in range(len(test_data)):
+                means.append(predicted[t][-1])
+                starts.append(predicted[t][0][0])
+                ends.append(predicted[t][0][1])
+            plot_surface.fill_between(range(len(train_data) - len(predicted) + 1, len(train_data) + 1), starts, ends, alpha = 0.1, color = "black", zorder = 10, label = "confidence interval of prediction")
+            plot_surface.plot(range(len(train_data) - len(predicted), len(train_data) + 1), [train_data[-len(predicted)-1]] + means, 'r--', zorder = 15, color = "black", label = "mean of prediction")
+            plot_surface.set_xlabel("Days T")
+            plot_surface.set_ylabel("No of New cases")
+
+
+            means, start, end = [], [], []
+            for i in range(T):
+                m = estimates_of_R_t[i][-1]
+                means.append(m)
+                start.append(estimates_of_R_t[i][0][0])
+                end.append(estimates_of_R_t[i][0][1])
+
+
+    if not uncertain_w:
+        if plot_w:
+            plot_serial_interval(range(1, T + 1), serial_interval_prob, label = "mean = " + str(mean_si) + " SD = " + str(sd_si))
+
+        elif plot_r_t:
+            estimates_of_R_t = []
+            for t in range(T):
+                estimates_of_R_t.append(estimate_R_t(t, window, incidence_data=incidence_data, w=w))
+            means, start, end = [], [], []
+            for i in range(T):
+                m = estimates_of_R_t[i][-1]
+                means.append(m)
+                start.append(estimates_of_R_t[i][0][0])
+                end.append(estimates_of_R_t[i][0][1])
+
+            plot_estimates_r_t(range(plot_start_day, T), starts=start[plot_start_day:], ends=end[plot_start_day:], means=means[plot_start_day:], label=label)
+        return
+
+    if uncertain_w:
+        serial_interval_prob = []
+        N = 1000
+        means = truncated_normal(mean_si, lower= 3.7, upper= 6.0, sd = 1, n = N)
+        sd = [max(means) + 1 for i in range(N)]
+        for i in range(N):
+            while sd[i] >= means[i]:
+
+                sd[i] = truncated_normal(sd_si, lower=1.9, upper= 4.9, sd = 1)
+        mean_of_means = round(np.mean(means), 2)
+        mean_of_SD = round(np.mean(sd), 2)
+
+        print(mean_of_means, mean_of_SD)
+        w = infection_profile(mean_of_means, mean_of_SD)
+
+        if plot_w:
+            for t in range(T):
+                serial_interval_prob.append(w(t))
+            plot_serial_interval(range(1, T + 1), serial_interval_prob, label = "mean = " + str(mean_of_means) + " SD = " + str(mean_of_SD))
+
+        elif plot_r_t:
+            estimates_of_r_t = np.zeros((N, T))
+            for n in range(N):
+                print(n)
+                w = infection_profile(means[n], sd[n])
+                for t in range(T):
+                    estimates_of_r_t[n, t] = estimate_R_t(t = t, pi = window, incidence_data = incidence_data, w = w, sample=True, n = 1)[0]
+
+            starts_of_r_t, ends_of_r_t, means_of_r_t = [],[],[]
+            for t in range(plot_start_day, T):
+                data = estimates_of_r_t[:, t]
+                mean, start, end = mean_confidence_interval(data)
+                starts_of_r_t.append(start)
+                ends_of_r_t.append(end)
+                means_of_r_t.append(mean)
+
+            plot_estimates_r_t(range(plot_start_day, T), starts=starts_of_r_t, ends=ends_of_r_t,
+                               means= means_of_r_t, label=label)
+        return
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    """
     if plot_r_t:
         n = 1
         for i in range(T):
@@ -193,7 +334,6 @@ def model_epidemic(data_file, prior_rt, mean_si, sd_si, window = 1, uncertain_w 
                 mean, start, end = mean_confidence_interval(posterior_distribution_R_t)
                 median = np.mean(posterior_distribution_R_t)
                 estimates_of_R_t.append([(start, end), median])
-                print(t, start, end)
 
 
 
@@ -216,39 +356,35 @@ def model_epidemic(data_file, prior_rt, mean_si, sd_si, window = 1, uncertain_w 
                 end.append(estimates_of_R_t[i][0][1])
 
 
+        plot_estimates_r_t(range(day, T), starts = start[day:], ends=end[day:], means= means[day:], label = label)
+    """
 
 
-        plot_surface.fill_between([i + 1 for i in range(T)][day:], start[(day):], end[(day):], alpha=0.25)
-        #print(estimates_of_R_t.index(max(estimates_of_R_t[day:])))
-        plot_surface.plot([i + 1 for i in range(T)][day:], means[day:], label = label)
-        plot_surface.set_xlabel("Days T")
-        plot_surface.set_ylabel("R_t")
 
-
-names = ["punjab", "sindh", "GB", "ICT", "KPK", "AJK", "balochistan", "Pakistan", "United Kingdom", "Italy", "Spain"]
+names = ["punjab", "sindh", "GB", "ICT", "KPK", "AJK", "balochistan", "Pakistan", "United Kingdom", "Italy", "Spain", "China"]
 names = [i + ".txt" for i in names]
 
-select = [names[-2]]
+select = [names[1]]
 
 
-fig, axs = plt.subplots(1,2)
+fig, axs = plt.subplots(2,1)
+WINDOW = 2
+MEAN_SERIAL_INTERVAL = 8.4
+STD_SERIAL_INTERVAL = 3.8
+
+
 
 for i in range(len(select)):
     name = select[i]
-    plot_surface = axs[0]
-    model_epidemic(name, prior_rt=prior_instant_R_t, window = 7, mean_si= 8.4, sd_si= 3.8, plot_incidence= True, plot_surface= plot_surface)
-    plot_surface.axhline(1, ls='--', label = '1')
+    plot_surface = axs[1]
+    model_epidemic(name, plot_start_day= 20, window = WINDOW, mean_si= MEAN_SERIAL_INTERVAL, sd_si= STD_SERIAL_INTERVAL, plot_incidence =  True, plot_surface= plot_surface, with_prediction = True)
+    #plot_surface.axhline(1, ls='--', label = '1')
     plot_surface.legend()
     #plot_surface.set_ylim((0, 5))
-    plot_surface.set_title(name[:-4])
-    plot_surface = axs[1]
-    model_epidemic(name, prior_rt=prior_instant_R_t, window=7, mean_si=8.4, sd_si=3.8, plot_r_t=True,
-                   plot_surface=plot_surface)
-    plot_surface.axhline(1, ls='--', label='1')
+    plot_surface = axs[0]
+    model_epidemic(name, plot_start_day= 20, window = WINDOW, mean_si= MEAN_SERIAL_INTERVAL, sd_si= STD_SERIAL_INTERVAL, plot_r_t =  True, plot_surface= plot_surface)
     plot_surface.legend()
-    plot_surface.set_ylim((0, 5))
-    plot_surface.set_title(name[:-4])
-
+    plot_surface.set_title(name[:-4].capitalize() + " Data with window size = " + str(WINDOW))
 #plt.grid()
 
 """
