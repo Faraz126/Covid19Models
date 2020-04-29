@@ -175,9 +175,9 @@ def plot_incidence_data(t, data, label = ''):
 
 def plot_estimates_r_t(t, starts, ends, means, label = ''):
     assert len(t) == len(starts) == len(ends) == len(means)
-    plot_surface.fill_between(list(t), starts, ends, alpha=0.25)
+    plot_surface.fill_between(list(t), starts, ends, alpha = 0.1, color = "black")
     # print(estimates_of_R_t.index(max(estimates_of_R_t[day:])))
-    plot_surface.plot(list(t), means, label=label)
+    plot_surface.plot(list(t), means, label=label, c='k')
     plot_surface.set_xlabel("Days T")
     plot_surface.set_ylabel("Effective reproduction number - Rt")
 
@@ -208,8 +208,8 @@ def model_epidemic(data_file, mean_si, sd_si, window = 1, plot_start_day = 7,  u
                 estimates_of_R_t.append(estimate_R_t(current_day, window, incidence_data=train_data, w=w))
                 current_day += 1
 
-            plot_surface.plot(range(1, len(train_data) + 1), train_data, zorder = 0, label = "train data")
-            plot_surface.plot(range(len(train_data), len(train_data) + len(test_data) + 1), [train_data[-1]] + test_data, zorder = 5, label = "test data")
+            plot_surface.scatter(range(1, len(train_data) + 1), train_data, zorder = 10, label = "Reported cases", c='b')
+            plot_surface.scatter(range(len(train_data), len(train_data) + len(test_data) + 1), [train_data[-1]] + test_data, zorder = 5, c='b')
 
             for t in range(len(test_data)):
                 estimates_of_R_t.append(estimate_R_t(current_day, window, incidence_data=train_data,
@@ -234,7 +234,7 @@ def model_epidemic(data_file, mean_si, sd_si, window = 1, plot_start_day = 7,  u
                 starts.append(predicted[t][0][0])
                 ends.append(predicted[t][0][1])
             plot_surface.fill_between(range(len(train_data) - len(predicted) + 1, len(train_data) + 1), starts, ends, alpha = 0.1, color = "black", zorder = 10, label = "confidence interval of prediction")
-            plot_surface.plot(range(len(train_data) - len(predicted), len(train_data) + 1), [train_data[-len(predicted)-1]] + means, 'r--', zorder = 15, color = "black", label = "mean of prediction")
+            plot_surface.plot(range(len(train_data) - len(predicted), len(train_data) + 1), [train_data[-len(predicted)-1]] + means, 'r', zorder = 15, color = "black", label = "mean of prediction")
             plot_surface.set_xlabel("Days T")
             plot_surface.set_ylabel("No of New cases")
 
@@ -373,7 +373,7 @@ def model_epidemic(data_file, mean_si, sd_si, window = 1, plot_start_day = 7,  u
 
 
 
-names = ["punjab", "sindh", "GB", "ICT", "KPK", "AJK", "balochistan", "Pakistan", "United Kingdom", "Italy", "Spain", "China"]
+names = ["Punjab", "Sindh", "GB", "ICT", "KPK", "AJK", "Balochistan", "Pakistan", "United Kingdom", "Italy", "Spain", "China"]
 names = [i + ".txt" for i in names]
 
 select = [i for i in names]
@@ -416,9 +416,9 @@ for i in range(len(select)):
     dates = [i.strftime("%d-%b") for i in dates]
     plot_surface.set_xticklabels(dates[5:])
     plot_surface.grid()
-    plt.tight_layout()
+    # plt.tight_layout()
     fig.set_size_inches(16, 9)
-    plt.savefig("Predictions\\"+ name[:-4].capitalize() + "Predicted.png", bbox_inches  = 'tight', dpi = 100)
+    plt.savefig("Predictions\\"+ name[:-4].capitalize() + "Predicted.pdf", bbox_inches  = 'tight', dpi = 100)
     #fig.autofmt_xdate()
 
     #plt.show()
