@@ -57,8 +57,8 @@ def world_data_to_txt(country_name):
         file.write("day\tcases started on " + start_date + "\n")
         file.writelines(lines)
 
-#csv_to_txt("data.csv")
-world_data_to_txt("China")
+#csv_to_txt("data2.csv")
+#world_data_to_txt("China")
 #world_data_to_txt("Spain")
 
 

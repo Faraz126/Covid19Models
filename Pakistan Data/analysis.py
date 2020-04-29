@@ -2,6 +2,9 @@ import numpy as np
 from scipy import stats, spatial
 import matplotlib.pyplot as plt
 import math
+import datetime
+import matplotlib.dates as mdates
+
 
 
 
@@ -176,7 +179,7 @@ def plot_estimates_r_t(t, starts, ends, means, label = ''):
     # print(estimates_of_R_t.index(max(estimates_of_R_t[day:])))
     plot_surface.plot(list(t), means, label=label)
     plot_surface.set_xlabel("Days T")
-    plot_surface.set_ylabel("R_t")
+    plot_surface.set_ylabel("Effective reproduction number - Rt")
 
 
 def model_epidemic(data_file, mean_si, sd_si, window = 1, plot_start_day = 7,  uncertain_w = False,  plot_w = False, plot_incidence = False, plot_r_t = False, plot_surface = None, label = '', with_prediction = False):
@@ -205,8 +208,8 @@ def model_epidemic(data_file, mean_si, sd_si, window = 1, plot_start_day = 7,  u
                 estimates_of_R_t.append(estimate_R_t(current_day, window, incidence_data=train_data, w=w))
                 current_day += 1
 
-            plot_surface.plot(range(1, len(train_data) + 1), train_data, zorder = 0, label = "test data")
-            plot_surface.plot(range(len(train_data), len(train_data) + len(test_data) + 1), [train_data[-1]] + test_data, zorder = 5, label = "train data")
+            plot_surface.plot(range(1, len(train_data) + 1), train_data, zorder = 0, label = "train data")
+            plot_surface.plot(range(len(train_data), len(train_data) + len(test_data) + 1), [train_data[-1]] + test_data, zorder = 5, label = "test data")
 
             for t in range(len(test_data)):
                 estimates_of_R_t.append(estimate_R_t(current_day, window, incidence_data=train_data,
@@ -215,10 +218,18 @@ def model_epidemic(data_file, mean_si, sd_si, window = 1, plot_start_day = 7,  u
                 train_data.append(test_data[t]) #adding actual value to train data
                 current_day += 1
 
+            estimates_of_R_t.append(estimate_R_t(current_day, window, incidence_data=train_data,
+                                                 w=w))
+            predicted.append(predict_I_t(current_day, estimates_of_R_t[-1][-1], incidence_data=train_data,
+                                         w=w))  # getting our prediction using last value of R_t
+            train_data.append(predicted[-1][-1])
+
+
+
 
             starts, ends, means = [],[], []
 
-            for t in range(len(test_data)):
+            for t in range(len(predicted)):
                 means.append(predicted[t][-1])
                 starts.append(predicted[t][0][0])
                 ends.append(predicted[t][0][1])
@@ -226,6 +237,7 @@ def model_epidemic(data_file, mean_si, sd_si, window = 1, plot_start_day = 7,  u
             plot_surface.plot(range(len(train_data) - len(predicted), len(train_data) + 1), [train_data[-len(predicted)-1]] + means, 'r--', zorder = 15, color = "black", label = "mean of prediction")
             plot_surface.set_xlabel("Days T")
             plot_surface.set_ylabel("No of New cases")
+
 
 
             means, start, end = [], [], []
@@ -364,10 +376,10 @@ def model_epidemic(data_file, mean_si, sd_si, window = 1, plot_start_day = 7,  u
 names = ["punjab", "sindh", "GB", "ICT", "KPK", "AJK", "balochistan", "Pakistan", "United Kingdom", "Italy", "Spain", "China"]
 names = [i + ".txt" for i in names]
 
-select = [names[1]]
+select = [i for i in names]
 
 
-fig, axs = plt.subplots(2,1)
+
 WINDOW = 2
 MEAN_SERIAL_INTERVAL = 8.4
 STD_SERIAL_INTERVAL = 3.8
@@ -375,16 +387,41 @@ STD_SERIAL_INTERVAL = 3.8
 
 
 for i in range(len(select)):
+    fig, axs = plt.subplots(2, 1)
     name = select[i]
     plot_surface = axs[1]
     model_epidemic(name, plot_start_day= 20, window = WINDOW, mean_si= MEAN_SERIAL_INTERVAL, sd_si= STD_SERIAL_INTERVAL, plot_incidence =  True, plot_surface= plot_surface, with_prediction = True)
+    start_date = datetime.date(2020, 2, 28)
+    delta = datetime.timedelta(days=10)
+    dates = []
+    for i in range(51):
+        dates.append(start_date)
+        start_date += delta
+    dates = [i.strftime("%d-%b") for i in dates]
+    plot_surface.set_xticklabels(dates)
     #plot_surface.axhline(1, ls='--', label = '1')
     plot_surface.legend()
+    plot_surface.grid()
     #plot_surface.set_ylim((0, 5))
     plot_surface = axs[0]
     model_epidemic(name, plot_start_day= 20, window = WINDOW, mean_si= MEAN_SERIAL_INTERVAL, sd_si= STD_SERIAL_INTERVAL, plot_r_t =  True, plot_surface= plot_surface)
     plot_surface.legend()
     plot_surface.set_title(name[:-4].capitalize() + " Data with window size = " + str(WINDOW))
+    start_date = datetime.date(2020, 2, 28)
+    delta = datetime.timedelta(days=5)
+    dates = []
+    for i in range(51):
+        dates.append(start_date)
+        start_date += delta
+    dates = [i.strftime("%d-%b") for i in dates]
+    plot_surface.set_xticklabels(dates[5:])
+    plot_surface.grid()
+    plt.tight_layout()
+    fig.set_size_inches(16, 9)
+    plt.savefig("Predictions\\"+ name[:-4].capitalize() + "Predicted.png", bbox_inches  = 'tight', dpi = 100)
+    #fig.autofmt_xdate()
+
+    #plt.show()
 #plt.grid()
 
 """
@@ -400,5 +437,3 @@ plot_surface.set_ylim((0, 20))
 
 """
 #plt.legend()
-plt.tight_layout()
-plt.show()
