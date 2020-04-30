@@ -13,7 +13,7 @@ def csv_to_txt(csv_file):
                 for i in prov_names:
                     numbers[i] = []
             else:
-                data = row[2:] #first two index have date
+                data = row[1:] #first two index have date
                 for i in range(len(prov_names)):
                     numbers[prov_names[i]].append(- sum(numbers[prov_names[i]]) + int(data[i]))
                 numbers["total"].append(- sum(numbers["total"]) + sum([int(i) for i in data]))
@@ -57,7 +57,7 @@ def world_data_to_txt(country_name):
         file.write("day\tcases started on " + start_date + "\n")
         file.writelines(lines)
 
-#csv_to_txt("data2.csv")
+csv_to_txt("data2.csv")
 #world_data_to_txt("China")
 #world_data_to_txt("Spain")
 
