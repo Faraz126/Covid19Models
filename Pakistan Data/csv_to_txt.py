@@ -3,8 +3,9 @@ import csv
 def csv_to_txt(csv_file):
     with open(csv_file, newline='') as csvfile:
         spamreader = csv.reader(csvfile, delimiter=',', quotechar='|')
-        numbers = {"total": []}
+        numbers = {"Pakistan": []}
         prov_names = []
+        start_date, end_date = str(), str()
 
         num = 0
         for row in spamreader:
@@ -14,9 +15,16 @@ def csv_to_txt(csv_file):
                     numbers[i] = []
             else:
                 data = row[1:] #first two index have date
+                if not start_date:
+                    start_date = row[0]
+                if not data:
+                    print(f"File {csv_file} ended")
+                    return
                 for i in range(len(prov_names)):
                     numbers[prov_names[i]].append(- sum(numbers[prov_names[i]]) + int(data[i]))
-                numbers["total"].append(- sum(numbers["total"]) + sum([int(i) for i in data]))
+                numbers["Pakistan"].append(- sum(numbers["Pakistan"]) + sum([int(i) for i in data]))
+
+            end_date = row[0]
             num += 1
 
 
@@ -25,7 +33,7 @@ def csv_to_txt(csv_file):
         file = open(i+'.txt', "w")
         data = numbers[i]
         lines = [str(i + 1) + "\t" + str(data[i]) + '\n' for i in range(len(data))]
-        file.write("day\tcases\n")
+        file.write(f"{start_date}, {end_date}\n")
         file.writelines(lines)
 
 
@@ -38,6 +46,7 @@ def world_data_to_txt(country_name):
         numbers = {country_name: []}
         epidemic_start = False
         start_date = str()
+        end_date = str()
 
         for row in spamreader:
             if int(row[country_index + 1]) != 0 and not epidemic_start:
@@ -48,19 +57,21 @@ def world_data_to_txt(country_name):
                 #print(num, row[country_index + 1])
                 numbers[country_name].append(- sum(numbers[country_name]) + int(row[country_index + 1]))
                 num += 1
+            end_date = row[0]
 
     #print(numbers)
     for i in numbers:
         file = open(i+'.txt', "w")
         data = numbers[i]
         lines = [str(i + 1) + "\t" + str(data[i]) + '\n' for i in range(len(data))]
-        file.write("day\tcases started on " + start_date + "\n")
+        file.write(f"{start_date}, {end_date}\n")
         file.writelines(lines)
 
-csv_to_txt("data2.csv")
-#world_data_to_txt("China")
-#world_data_to_txt("Spain")
+if __name__ == "__main__":
+    csv_to_txt("pakistan_data.csv")
+    #world_data_to_txt("China")
+    #world_data_to_txt("Spain")
+    #world_data_to_txt("United Kingdom")
+    #world_data_to_txt("Italy")
 
 
-
-            #print(', '.join(row))
