@@ -7,7 +7,7 @@ import csv
 my_date = datetime.datetime.now(timezone('Etc/GMT+5'))
 current_date = my_date.date()
 current_date_str = my_date.date().strftime('%d-%b-%y')
-print((my_date.date().strftime('%d-%b-%y')))
+
 
 
 
@@ -16,6 +16,7 @@ print((my_date.date().strftime('%d-%b-%y')))
 mapping = {"Sindh": 2, "Punjab": 1, "KP": 3, "Islamabad":0, "Balochistan": 4, "GB": 5, "AJK":6}
 
 def scrap_data():
+    """to scrap current data"""
     url = 'https://www.geo.tv/'
     response = get(url)
 
@@ -35,21 +36,16 @@ def scrap_data():
     return data
 
 def write_to_csv(data):
-    file_name = 'Pakistan_data_scrapped.csv'
+    file_name = 'Pakistan_data.csv'
     with open(file_name, newline='', mode= 'r') as csvfile:
         spamreader = csv.reader(csvfile, delimiter=',', quotechar='|')
         rows = []
         for row in spamreader:
             rows.append(row)
 
-
-
     last_reading = rows[-1]
     last_date = (datetime.datetime.strptime(last_reading[0], '%d-%b-%y'))
     last_date = last_date.date()
-
-
-
 
     if last_date == current_date:
         rows[-1] = [current_date.strftime('%d-%b-%y')] + data
@@ -58,23 +54,14 @@ def write_to_csv(data):
         rows.append( [current_date.strftime('%d-%b-%y')] + data)
 
 
-    file_name = 'Pakistan_data_scrapped_write.csv'
+    file_name = 'Pakistan_data.csv'
     with open(file_name, newline='', mode='w') as csvfile:
         spamwriter = csv.writer(csvfile, delimiter=',', quotechar='|')
         for row in rows:
             spamwriter.writerow(row)
 
-        
 
-
-    '''
-    with open(file_name, newline='', mode= 'w') as csvfile:
-        spamreader = csv.writer(csvfile, delimiter=',', quotechar='|')
-        rows = []
-    '''
-
-
-
-write_to_csv(scrap_data())
+if __name__ == "__main__":
+    write_to_csv(scrap_data())
 
 

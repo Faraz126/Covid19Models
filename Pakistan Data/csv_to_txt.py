@@ -33,7 +33,7 @@ def csv_to_txt(csv_file):
         file = open(i+'.txt', "w")
         data = numbers[i]
         lines = [str(i + 1) + "\t" + str(data[i]) + '\n' for i in range(len(data))]
-        file.write(f"{start_date}, {end_date}\n")
+        file.write(f"{start_date},{end_date}\n")
         file.writelines(lines)
 
 
@@ -64,7 +64,7 @@ def world_data_to_txt(country_name):
         file = open(i+'.txt', "w")
         data = numbers[i]
         lines = [str(i + 1) + "\t" + str(data[i]) + '\n' for i in range(len(data))]
-        file.write(f"{start_date}, {end_date}\n")
+        file.write(f"{start_date},{end_date}\n")
         file.writelines(lines)
 
 if __name__ == "__main__":

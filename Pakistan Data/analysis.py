@@ -355,6 +355,7 @@ if __name__ == "__main__":
     for i in range(len(select)):
         fig, axs = plt.subplots(2, 1)
         name = select[i]
+        print(f"Starting {name}")
         from_date, end_date = extract_dates_from_txt(name)
         #plot for R_t estimates
         plot_surface = axs[1]
@@ -391,4 +392,5 @@ if __name__ == "__main__":
         #plt.tight_layout()
         fig.set_size_inches(16, 9)
         plt.savefig(f"Predictions\\{name[:-4]}_{end_date}.pdf", bbox_inches  = 'tight', dpi = 100)
+        print(f"Saved {name}")
         #plt.show()
