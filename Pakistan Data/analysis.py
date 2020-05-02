@@ -224,7 +224,7 @@ def plot_incidence_with_prediction(T, incidence_data, window, plot_surface, w, n
         starts.append(predicted[t][0][0])
         ends.append(predicted[t][0][1])
     plot_surface.fill_between(range(len(train_data) - len(predicted) + 1, len(train_data) + 1), starts, ends, alpha=0.1,
-                              color="black", zorder=10, label="confidence interval of prediction")
+                              color="black", zorder=10, label = "confidence interval of prediction")
     plot_surface.plot(range(len(train_data) - len(predicted) + 1, len(train_data) + 1), means, 'r', zorder=15,
                       color="black", label="mean of prediction")
     plot_surface.set_xlabel("Days T")
@@ -341,10 +341,14 @@ if __name__ == "__main__":
 
 
 
-    WINDOW = 2
-    MEAN_SERIAL_INTERVAL = 8.4
-    STD_SERIAL_INTERVAL = 3.8
+    WINDOW = 4
+    MEAN_SERIAL_INTERVAL = 4 #8.4 #4
+    STD_SERIAL_INTERVAL = 5 # 3.8 #5
     CURRENT_DATE = datetime.date.today()
+
+#change the incidence data to % of positive cases
+#delay in reporting -> change window size
+#
 
 
 

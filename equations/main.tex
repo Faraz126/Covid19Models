@@ -1,0 +1,28 @@
+\documentclass{article}
+\usepackage[utf8]{inputenc}
+
+\title{Equations (cori 2013)}
+\date{April 2020}
+
+\begin{document}
+
+
+
+\section*{Equations}
+
+\begin{equation}
+    I_{t} \sim Poisson(R_{t} \sum_{s=0}^{t - 1} I_{t-s} w_{s})
+\end{equation}
+
+\begin{equation}
+    R_{t} \sim Gamma( a + \sum_{s=t - \pi}^{t - 1}, \frac{1}{\frac{1}{b} + \sum_{s = t - \pi}^{t - 1}\Lambda_s})
+    
+
+\end{equation}
+
+\begin{equation}
+    \Lambda_s \doteq \sum_{s=0}^{t - 1} (I_{t-s} w_{s})
+\end{equation}
+
+
+\end{document}
