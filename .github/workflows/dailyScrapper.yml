@@ -24,6 +24,11 @@ jobs:
     steps:
     # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
     - uses: actions/checkout@v2
+    - name: Set up Python 3.x
+      uses: actions/setup-python@v1
+      with:
+        python-version: '3.x' # Semantic version range syntax or exact version of a Python version
+        architecture: 'x64' # Optional - x64 or x86, defaults to x64
 
     # Runs a single command using the runners shell
     - name: upgrade pip
