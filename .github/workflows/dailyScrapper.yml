@@ -30,6 +30,10 @@ jobs:
     - name: install bs4
       run: pip install bs4
 
+    # Runs a single command using the runners shell
+    - name: install requests
+      run: pip install requests
+
     # Runs a set of commands using the runners shell
     - name: run script
       run: python pakistan_data/scrap_data_to_csv.py
