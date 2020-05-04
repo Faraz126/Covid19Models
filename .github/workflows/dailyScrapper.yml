@@ -19,8 +19,6 @@ jobs:
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
     - uses: actions/checkout@v2
-      with:
-        ref: gh-pages
     - name: Set up Python 3.x
       uses: actions/setup-python@v1
       with:
