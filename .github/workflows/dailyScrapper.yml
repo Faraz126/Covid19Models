@@ -47,3 +47,10 @@ jobs:
     - name: run script
       run: python pakistan_data/scrap_data_to_csv.py
 
+    - uses: stefanzweifel/git-auto-commit-action@v4.1.6
+      with:
+        commit_message: Add updated csv file
+
+        branch: ${{ github.head_ref }}
+	file_pattern: pakistan_data/pakistan_data.csv
+	commit_user_name: GitHub Actions Bot
