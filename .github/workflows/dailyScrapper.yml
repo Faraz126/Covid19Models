@@ -52,5 +52,5 @@ jobs:
         commit_message: Add updated csv file
 
         branch: ${{ github.head_ref }}
-	file_pattern: pakistan_data/pakistan_data.csv
-	commit_user_name: GitHub Actions Bot
+        file_pattern: pakistan_data/pakistan_data.csv
+        commit_user_name: GitHub Actions Bot
