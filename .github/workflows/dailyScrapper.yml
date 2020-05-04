@@ -54,3 +54,11 @@ jobs:
         branch: ${{ github.head_ref }}
         file_pattern: pakistan_data/pakistan_data.csv
         commit_user_name: GitHub Actions Bot
+
+    - name: install scipy, numpy, matlotlib
+      run: |
+        pip install scipy
+        pip install numpy
+        pip install matplotlib
+        cd pakistan_data/
+        python analysis.py

@@ -391,6 +391,7 @@ if __name__ == "__main__":
 
         #plt.tight_layout()
         fig.set_size_inches(16, 9)
-        plt.savefig(f"Predictions\\{name[:-4]}_{end_date}.pdf", bbox_inches  = 'tight', dpi = 100)
+        plt.savefig(f"Predictions/{name[:-4]}.png", bbox_inches  = 'tight', dpi = 100)
+#        plt.savefig(f"Predictions/{name[:-4]}_{end_date}.pdf", bbox_inches  = 'tight', dpi = 100)
         print(f"Saved {name}")
         #plt.show()
