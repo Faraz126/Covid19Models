@@ -6,7 +6,7 @@ name: Covid daily scrapper
 # events but only for the master branch
 on:
   schedule:
-    - cron: '10 19 * * *'
+    - cron: '23 19 * * *'
 
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
@@ -36,6 +36,7 @@ jobs:
         pip install matplotlib
         python pakistan_data/scrap_data_to_csv.py
         cd pakistan_data/
+	python csv_to_txt.py
         python analysis.py
 
     - uses: stefanzweifel/git-auto-commit-action@v4.1.6
@@ -43,7 +44,7 @@ jobs:
         commit_message: Add updated csv file
 
         branch: ${{ github.head_ref }}
-        file_pattern: pakistan_data/*.csv pakistan_data/*.png
+        file_pattern: pakistan_data/*.csv pakistan_data/*.png pakistan_data/*.txt
         commit_user_name: GitHub Actions Bot
 
     - name: install scipy, numpy, matlotlib
