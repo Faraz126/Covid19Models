@@ -13,6 +13,6 @@
 
 ![Effective reproduction number of Punjab](/pakistan_data/Predictions/Punjab.png)
 
-###Effective reproduction number of Sindh
+### Effective reproduction number of Sindh
 
 ![Effective reproduction number of Sindh](/pakistan_data/Predictions/Sindh.png)
