@@ -7,9 +7,9 @@ Our preliminary results for Balochistan, KPK, Punjab, and Sindh are shown below 
 
 To verify the applicability of the renewable model framework in the context of Pakistan and our hyperparameters, we have predicted the number of infections for the last six days (grey region) and compared with the reported number of infections.
 
-[1 - A new framework and software to estimate time-varying reproduction numbers during epidemics](https://academic.oup.com/aje/article/178/9/1505/89262)
+[1. A new framework and software to estimate time-varying reproduction numbers during epidemics](https://academic.oup.com/aje/article/178/9/1505/89262)
 
-[2 - Optimising Renewal Models for Real-Time Epidemic Prediction and Estimation](https://www.biorxiv.org/content/10.1101/835181v1.abstract)
+[2. Optimising Renewal Models for Real-Time Epidemic Prediction and Estimation](https://www.biorxiv.org/content/10.1101/835181v1.abstract)
 
 ### Effective reproduction number of Balochistan
 
