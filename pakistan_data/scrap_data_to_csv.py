@@ -36,7 +36,7 @@ def scrap_data():
     return data
 
 def write_to_csv(data):
-    file_name = 'Pakistan_data.csv'
+    file_name = './pakistan_data/pakistan_data.csv'
     with open(file_name, newline='', mode= 'r') as csvfile:
         spamreader = csv.reader(csvfile, delimiter=',', quotechar='|')
         rows = []
@@ -54,7 +54,7 @@ def write_to_csv(data):
         rows.append( [current_date.strftime('%d-%b-%y')] + data)
 
 
-    file_name = 'Pakistan_data.csv'
+    file_name = './pakistan_data/pakistan_data.csv'
     with open(file_name, newline='', mode='w') as csvfile:
         spamwriter = csv.writer(csvfile, delimiter=',', quotechar='|')
         for row in rows:
