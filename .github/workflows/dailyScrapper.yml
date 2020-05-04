@@ -48,8 +48,7 @@ jobs:
         commit_message: Add updated csv file
 
         branch: ${{ github.head_ref }}
-        file_pattern: pakistan_data/*.csv
-        file_pattern:pakistan_data/*.png
+        file_pattern: pakistan_data/*.csv pakistan_data/*.png
         commit_user_name: GitHub Actions Bot
 
     - name: install scipy, numpy, matlotlib
