@@ -36,11 +36,11 @@ jobs:
         pip install bs4
         pip install requests
         pip install pytz
-	pip install scipy
+        pip install scipy
         pip install numpy
         pip install matplotlib
-	python pakistan_data/scrap_data_to_csv.py
-	cd pakistan_data/
+        python pakistan_data/scrap_data_to_csv.py
+        cd pakistan_data/
         python analysis.py
 
     - uses: stefanzweifel/git-auto-commit-action@v4.1.6
