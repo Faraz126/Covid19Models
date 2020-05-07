@@ -1,5 +1,5 @@
 # Predicting effective reproduction number, Rt, of COVID-19 in Pakistan
-**By Faraz Ahmed Khan and Musabbir Abdul Majeed**
+**By Faraz Ahmed Khan and [Dr. Musabbir Abdul Majeed](https://www.linkedin.com/in/mamaj/)**
 
 We implemented the renewable model framework proposed by [Cori et al.](https://academic.oup.com/aje/article/178/9/1505/89262) and extended by [Parag et al.](https://www.biorxiv.org/content/10.1101/835181v1.abstract). This approach allows us to estimate instantaneous reproduction number from the incidence or infection curve, and predict infections for the next day. The importance of the effective reproduction number is explained in [here](https://www.bbc.com/news/amp/health-52473523)
 
