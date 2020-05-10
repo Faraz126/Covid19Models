@@ -186,8 +186,8 @@ def plot_estimates_r_t(t, starts, ends, means, label = ''):
 
 
 def plot_incidence_with_prediction(T, incidence_data, window, plot_surface, w, number_of_days_to_exclude = 6):
-    train_data = incidence_data[:-number_of_days_to_exclude]  # excluding last 6 days from train data
-    test_data = incidence_data[-number_of_days_to_exclude:]
+    train_data = incidence_data[:41]  # excluding last 6 days from train data
+    test_data = incidence_data[41:]
     predicted = []
     estimates_of_R_t = []
     current_day = 0
