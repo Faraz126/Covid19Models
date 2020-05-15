@@ -185,7 +185,20 @@ def plot_estimates_r_t(t, starts, ends, means, label = ''):
     plot_surface.set_ylabel("Effective reproduction number - Rt")
 
 
+def plot_days_between_lockdown_to_peak(plot_surface):
+    global PEAK_INFECTIONS, LOCKDOWN_START
+    plot_surface.axvline(PEAK_INFECTIONS, ls = '--', color = "red", label = "Peak in infections")
+    plot_surface.axvline(LOCKDOWN_START, ls='--', color = "blue", label = "start of lockdown")
+    plot_surface.axvspan(xmin= LOCKDOWN_START, xmax= PEAK_INFECTIONS, alpha = 0.25, color = "red", label =  str(PEAK_INFECTIONS - LOCKDOWN_START) + " Days ")
+
+
 def plot_incidence_with_prediction(T, incidence_data, window, plot_surface, w, number_of_days_to_exclude = 6):
+    global PEAK_INFECTIONS
+    PEAK_INFECTIONS = incidence_data.index(max(incidence_data))+1
+
+
+
+
     train_data = incidence_data[:41]  # excluding last 6 days from train data
     test_data = incidence_data[41:]
     predicted = []
@@ -215,6 +228,7 @@ def plot_incidence_with_prediction(T, incidence_data, window, plot_surface, w, n
                                  w=w))  # getting our prediction using last value of R_t
 
     train_data.append(predicted[-1][-1])
+
     plot_surface.set_xlim(0, T + 2)
 
     starts, ends, means = [], [], []  # start of confidence interval, end of interval, mean of prediction
@@ -324,6 +338,49 @@ def model_epidemic(data_file, mean_si, sd_si, window = 1, plot_start_day = 7,  u
         return
 
 
+def plot_mobility_data(country_name, plot_surface):
+    start_date, _ = extract_dates_from_txt(country_name + ".txt")
+    start_date = (datetime.datetime.strptime(start_date, '%d-%b-%y'))
+    mobility_file = open(country_name.lower() + "_mobility.txt", "r")
+    first_line = mobility_file.readline()
+    data = mobility_file.readlines()
+    dates = []
+    readings = []
+
+    for line in data:
+        current_line = line.strip().split('\t')
+        if (datetime.datetime.strptime(current_line[0], '%d-%b-%y')) >= start_date:
+            dates.append(current_line[0])
+            readings.append(float((current_line[1])))
+
+    changes = []
+    for i in range(1, len(readings)):
+        changes.append(readings[i] - readings[i-1])
+
+    sum_changes = []
+    for i in range(0, len(changes) - 5):
+        sum_changes.append(sum(changes[i:i+5]))
+
+    dates = list(range(1,len(dates)+1))
+
+    global LOCKDOWN_START
+    LOCKDOWN_START = sum_changes.index(min(sum_changes)) + 1
+
+
+
+
+
+
+
+
+    plot_surface.plot(dates, readings,color = "g")
+    #plot_surface.set_xlim(0, 61 + 2)
+    plot_surface.set_ylabel("Mobility percentage", color = "g")
+
+
+
+
+
 
 def extract_dates_from_txt(txt_file):
     file = open(txt_file, "r")
@@ -332,9 +389,24 @@ def extract_dates_from_txt(txt_file):
     file.close()
     return start_date, end_date
 
+def add_dates(start_date, end_date, delta, plot_surface):
+    #start_date = datetime.date(2020, 2, 28)  #
+    start_date = (datetime.datetime.strptime(start_date, '%d-%b-%y')).date()
+    delta = datetime.timedelta(days=delta)
+    dates = []
+    while start_date <= end_date:
+        dates.append(start_date)
+        start_date += delta
+    dates = [i.strftime("%d-%b") for i in dates]  # aligning dates on xaxis
+    print(dates)
+    plot_surface.set_xticklabels(dates[:])
+
+
+PEAK_INFECTIONS = 0
+LOCKDOWN_START = 0
 
 if __name__ == "__main__":
-    names = ["Punjab", "Sindh", "GB", "ICT", "KPK", "AJK", "Balochistan", "Pakistan", "United Kingdom", "Italy", "Spain", "China"]
+    names = ["Pakistan"]
     names = [i + ".txt" for i in names]
 
     select = [i for i in names] #write names of files to select.
@@ -360,24 +432,18 @@ if __name__ == "__main__":
         #plot for R_t estimates
         plot_surface = axs[1]
         model_epidemic(name, plot_start_day= 20, window = WINDOW, mean_si= MEAN_SERIAL_INTERVAL, sd_si= STD_SERIAL_INTERVAL, plot_incidence =  True, plot_surface= plot_surface, with_prediction = True)
-        start_date = datetime.date(2020, 2, 28) #
-        delta = datetime.timedelta(days=10)
-        dates = []
-        for i in range(51):
-            dates.append(start_date)
-            start_date += delta
-        dates = [i.strftime("%d-%b") for i in dates] #aligning dates on xaxis
-        plot_surface.set_xticklabels(dates[1:])
-
+        add_dates(from_date, CURRENT_DATE, delta= 10, plot_surface = plot_surface)
         plot_surface.legend()
         plot_surface.grid()
         #plot_surface.set_ylim((0, 5))
+
 
         plot_surface = axs[0]
         plot_surface.axhline(1, ls='--', label='1')
         model_epidemic(name, plot_start_day= 20, window = WINDOW, mean_si= MEAN_SERIAL_INTERVAL, sd_si= STD_SERIAL_INTERVAL, plot_r_t =  True, plot_surface= plot_surface)
         plot_surface.legend()
         plot_surface.set_title(f"{name[:-4]} Data with window size = {WINDOW} starting from {from_date} to {end_date}")
+        """
         start_date = datetime.date(2020, 2, 28)
         delta = datetime.timedelta(days=10)
         dates = []
@@ -386,12 +452,30 @@ if __name__ == "__main__":
             start_date += delta
         dates = [i.strftime("%d-%b") for i in dates]
         plot_surface.set_xticklabels(dates[1:])
-        plot_surface.legend()
+        """
+        #plot_surface.legend()
         plot_surface.grid()
+
+        plot_surface = axs[1].twinx()
+        plot_mobility_data(name[:-4], plot_surface)
+        """
+        start_date = datetime.date(2020, 2, 28)  #
+        delta = datetime.timedelta(days=10)
+        dates = []
+        for i in range(51):
+            dates.append(start_date)
+            start_date += delta
+        dates = [i.strftime("%d-%b") for i in dates]  # aligning dates on xaxis
+        plot_surface.set_xticklabels(dates[1:])
+        """
+        plot_days_between_lockdown_to_peak(axs[1])
+        axs[1].legend()
+        plot_surface.legend()
+
 
         #plt.tight_layout()
         fig.set_size_inches(16, 9)
-        plt.savefig(f"Predictions/{name[:-4]}.png", bbox_inches  = 'tight', dpi = 100)
+        #plt.savefig(f"Predictions/{name[:-4]}.png", bbox_inches  = 'tight', dpi = 100)
 #        plt.savefig(f"Predictions/{name[:-4]}_{end_date}.pdf", bbox_inches  = 'tight', dpi = 100)
-        print(f"Saved {name}")
-        #plt.show()
+        #print(f"Saved {name}")
+        plt.show()

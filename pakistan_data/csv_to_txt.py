@@ -1,4 +1,5 @@
 import csv
+import datetime
 
 def csv_to_txt(csv_file):
     with open(csv_file, newline='') as csvfile:
@@ -67,11 +68,42 @@ def world_data_to_txt(country_name):
         file.write(f"{start_date},{end_date}\n")
         file.writelines(lines)
 
+def mobility_data_to_txt(country_names):
+    """
+    :param country_names: list of country names to extract mobility data for.
+    """
+    assert type(country_names) == list
+    countries_with_data = {i.lower():[] for i in country_names}
+    with open("global_mobility.csv", newline='', encoding='utf-8') as csvfile:
+
+        spamreader = csv.reader(csvfile, delimiter=',', quotechar='|')
+        header = next(spamreader) #first line
+        print(header)
+        for row in spamreader:
+            country_name = row[1].lower()
+            if country_name in countries_with_data and not row[2] and not row[3]:
+                date = datetime.datetime.strptime(row[4], '%Y-%m-%d')
+                countries_with_data[country_name].append((date, row[5:]))
+
+    for country in countries_with_data:
+        data_for_country = sorted(countries_with_data[country])
+        txt_file = open(f'{country}_mobility.txt', "w")
+        txt_file.write(header[4] + "\t" + "\t".join(header[5:]) + "\n")
+        for row in data_for_country:
+            current_date = row[0].strftime('%d-%b-%y')
+            readings = "\t".join(row[1])
+            txt_file.write(current_date + "\t" + readings + "\n")
+        txt_file.close()
+
+
+
+
 if __name__ == "__main__":
-    csv_to_txt("pakistan_data.csv")
+    #csv_to_txt("pakistan_data.csv")
     #world_data_to_txt("China")
     #world_data_to_txt("Spain")
     #world_data_to_txt("United Kingdom")
     #world_data_to_txt("Italy")
+    mobility_data_to_txt(["United Kingdom", "Italy", "Spain"])
 
 
