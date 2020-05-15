@@ -7,6 +7,9 @@ Our preliminary results for Balochistan, KPK, Punjab, and Sindh are shown below 
 
 To verify the applicability of the renewable model framework in the context of Pakistan and our hyperparameters, we have predicted the number of infections for the last six days (grey region) and compared with the reported number of infections.
 
+### Effective reproduction number of Pakistan
+![Effective reproduction number of Pakistan](/pakistan_data/Predictions/Pakistan.png)
+
 
 ### Effective reproduction number of Balochistan
 
