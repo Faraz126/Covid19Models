@@ -39,7 +39,7 @@ def csv_to_txt(csv_file):
 
 
 def world_data_to_txt(country_name):
-    countires = ['China', 'US', 'United Kingdom', 'Italy', 'France', 'Germany', 'Spain', 'Iran']
+    countires = ['China', 'United States', 'United Kingdom', 'Italy', 'France', 'Germany', 'Spain', 'Iran', "New York"]
     country_index=  countires.index(country_name)
     with open("worldData.csv", newline='') as csvfile:
         spamreader = csv.reader(csvfile, delimiter=',', quotechar='|')
@@ -51,24 +51,24 @@ def world_data_to_txt(country_name):
 
         for row in spamreader:
             if int(row[country_index + 1]) != 0 and not epidemic_start:
-                start_date = row[0]
+                start_date = datetime.datetime.strptime(row[0], '%m/%d/%Y')
                 num = 1
                 epidemic_start = True
             if epidemic_start:
                 #print(num, row[country_index + 1])
                 numbers[country_name].append(- sum(numbers[country_name]) + int(row[country_index + 1]))
                 num += 1
-            end_date = row[0]
+            end_date = datetime.datetime.strptime(row[0], '%m/%d/%Y')
 
     #print(numbers)
     for i in numbers:
         file = open(i+'.txt', "w")
         data = numbers[i]
         lines = [str(i + 1) + "\t" + str(data[i]) + '\n' for i in range(len(data))]
-        file.write(f"{start_date},{end_date}\n")
+        file.write(f"{start_date.strftime('%d-%b-%y')},{end_date.strftime('%d-%b-%y')}\n")
         file.writelines(lines)
 
-def mobility_data_to_txt(country_names):
+def mobility_data_to_txt(country_names, region_names = []):
     """
     :param country_names: list of country names to extract mobility data for.
     """
@@ -81,13 +81,23 @@ def mobility_data_to_txt(country_names):
         print(header)
         for row in spamreader:
             country_name = row[1].lower()
-            if country_name in countries_with_data and not row[2] and not row[3]:
+            if country_name in countries_with_data and not row[2] and not row[3] and not region_names:
+                date = datetime.datetime.strptime(row[4], '%Y-%m-%d')
+                countries_with_data[country_name].append((date, row[5:]))
+            elif country_name in countries_with_data and row[2] in region_names and not row[3]:
                 date = datetime.datetime.strptime(row[4], '%Y-%m-%d')
                 countries_with_data[country_name].append((date, row[5:]))
 
+    iter = 0
     for country in countries_with_data:
+        if region_names:
+            region = region_names[iter]
+            txt_file = open(f'{region}_mobility.txt', "w")
+        else:
+            region = str()
+            txt_file = open(f'{country}_mobility.txt', "w")
         data_for_country = sorted(countries_with_data[country])
-        txt_file = open(f'{country}_mobility.txt', "w")
+
         txt_file.write(header[4] + "\t" + "\t".join(header[5:]) + "\n")
         for row in data_for_country:
             current_date = row[0].strftime('%d-%b-%y')
@@ -104,6 +114,11 @@ if __name__ == "__main__":
     #world_data_to_txt("Spain")
     #world_data_to_txt("United Kingdom")
     #world_data_to_txt("Italy")
-    mobility_data_to_txt(["United Kingdom", "Italy", "Spain"])
+    #world_data_to_txt("Germany")
+    #world_data_to_txt("United States")
+    world_data_to_txt("New York")
+
+
+    mobility_data_to_txt(["United States"], region_names= ["New York"])
 
 

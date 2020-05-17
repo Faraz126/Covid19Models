@@ -183,6 +183,7 @@ def plot_estimates_r_t(t, starts, ends, means, label = ''):
     plot_surface.plot(list(t), means, label=label, c='k')
     plot_surface.set_xlabel("Days T")
     plot_surface.set_ylabel("Effective reproduction number - Rt")
+    plot_surface.set_xticks(range(0, t[-1] + 1, 10))
 
 
 def plot_days_between_lockdown_to_peak(plot_surface):
@@ -231,6 +232,7 @@ def plot_incidence_with_prediction(T, incidence_data, window, plot_surface, w, n
 
     plot_surface.set_xlim(0, T + 2)
 
+
     starts, ends, means = [], [], []  # start of confidence interval, end of interval, mean of prediction
 
     for t in range(len(predicted)):
@@ -243,6 +245,7 @@ def plot_incidence_with_prediction(T, incidence_data, window, plot_surface, w, n
                       color="black", label="mean of prediction")
     plot_surface.set_xlabel("Days T")
     plot_surface.set_ylabel("No of New cases")
+    plot_surface.set_xticks(range(0, len(train_data), 10))
 
 def model_epidemic(data_file, mean_si, sd_si, window = 1, plot_start_day = 7,  uncertain_w = False,  plot_w = False, plot_incidence = False, plot_r_t = False, plot_surface = None, label = '', with_prediction = False):
     '''
@@ -292,7 +295,7 @@ def model_epidemic(data_file, mean_si, sd_si, window = 1, plot_start_day = 7,  u
                 means.append(m)
                 start.append(estimates_of_R_t[i][0][0])
                 end.append(estimates_of_R_t[i][0][1])
-
+            plot_surface.axhline(1, ls='--', label='1')
             plot_estimates_r_t(range(plot_start_day, T), starts=start[plot_start_day:], ends=end[plot_start_day:], means=means[plot_start_day:], label=label)
             plot_surface.set_xlim(0, T+ 1)
         return
@@ -320,7 +323,7 @@ def model_epidemic(data_file, mean_si, sd_si, window = 1, plot_start_day = 7,  u
         elif plot_r_t:
             estimates_of_r_t = np.zeros((N, T))
             for n in range(N):
-                print(n)
+
                 w = infection_profile(means[n], sd[n])
                 for t in range(T):
                     estimates_of_r_t[n, t] = estimate_R_t(t = t, pi = window, incidence_data = incidence_data, w = w, sample=True, n = 1)[0]
@@ -332,7 +335,7 @@ def model_epidemic(data_file, mean_si, sd_si, window = 1, plot_start_day = 7,  u
                 starts_of_r_t.append(start)
                 ends_of_r_t.append(end)
                 means_of_r_t.append(mean)
-
+            plot_surface.axhline(1, ls='--', label='1')
             plot_estimates_r_t(range(plot_start_day, T), starts=starts_of_r_t, ends=ends_of_r_t,
                                means= means_of_r_t, label=label)
         return
@@ -346,12 +349,21 @@ def plot_mobility_data(country_name, plot_surface):
     data = mobility_file.readlines()
     dates = []
     readings = []
+    delta = datetime.timedelta(days=1)
+    started = False
+    first_date = None
 
     for line in data:
         current_line = line.strip().split('\t')
-        if (datetime.datetime.strptime(current_line[0], '%d-%b-%y')) >= start_date:
+        current_date = datetime.datetime.strptime(current_line[0], '%d-%b-%y')
+
+        if (current_date).date() >= start_date.date():
+            if not started:
+                first_date = current_date
+                started = True
             dates.append(current_line[0])
             readings.append(float((current_line[1])))
+
 
     changes = []
     for i in range(1, len(readings)):
@@ -361,15 +373,11 @@ def plot_mobility_data(country_name, plot_surface):
     for i in range(0, len(changes) - 5):
         sum_changes.append(sum(changes[i:i+5]))
 
-    dates = list(range(1,len(dates)+1))
+
+    dates = list(range((first_date - start_date).days + 1, 1 + (first_date - start_date).days + len(dates)))
 
     global LOCKDOWN_START
-    LOCKDOWN_START = sum_changes.index(min(sum_changes)) + 1
-
-
-
-
-
+    LOCKDOWN_START = (first_date - start_date).days + sum_changes.index(min(sum_changes)) + 1
 
 
 
@@ -391,6 +399,7 @@ def extract_dates_from_txt(txt_file):
 
 def add_dates(start_date, end_date, delta, plot_surface):
     #start_date = datetime.date(2020, 2, 28)  #
+
     start_date = (datetime.datetime.strptime(start_date, '%d-%b-%y')).date()
     delta = datetime.timedelta(days=delta)
     dates = []
@@ -398,7 +407,7 @@ def add_dates(start_date, end_date, delta, plot_surface):
         dates.append(start_date)
         start_date += delta
     dates = [i.strftime("%d-%b") for i in dates]  # aligning dates on xaxis
-    print(dates)
+
     plot_surface.set_xticklabels(dates[:])
 
 
@@ -406,13 +415,13 @@ PEAK_INFECTIONS = 0
 LOCKDOWN_START = 0
 
 if __name__ == "__main__":
-    names = ["Pakistan"]
+    names = ["France", "United Kingdom", "New York", "Spain", "Italy", "Germany"]
     names = [i + ".txt" for i in names]
 
     select = [i for i in names] #write names of files to select.
 
 
-
+    days_lockdown_to_peak = []
     WINDOW = 4
     MEAN_SERIAL_INTERVAL = 4 #8.4 #4
     STD_SERIAL_INTERVAL = 5 # 3.8 #5
@@ -435,47 +444,37 @@ if __name__ == "__main__":
         add_dates(from_date, CURRENT_DATE, delta= 10, plot_surface = plot_surface)
         plot_surface.legend()
         plot_surface.grid()
-        #plot_surface.set_ylim((0, 5))
+
 
 
         plot_surface = axs[0]
-        plot_surface.axhline(1, ls='--', label='1')
+
         model_epidemic(name, plot_start_day= 20, window = WINDOW, mean_si= MEAN_SERIAL_INTERVAL, sd_si= STD_SERIAL_INTERVAL, plot_r_t =  True, plot_surface= plot_surface)
+        add_dates(from_date, CURRENT_DATE, delta=10, plot_surface=plot_surface)
         plot_surface.legend()
         plot_surface.set_title(f"{name[:-4]} Data with window size = {WINDOW} starting from {from_date} to {end_date}")
-        """
-        start_date = datetime.date(2020, 2, 28)
-        delta = datetime.timedelta(days=10)
-        dates = []
-        for i in range(51):
-            dates.append(start_date)
-            start_date += delta
-        dates = [i.strftime("%d-%b") for i in dates]
-        plot_surface.set_xticklabels(dates[1:])
-        """
-        #plot_surface.legend()
         plot_surface.grid()
 
         plot_surface = axs[1].twinx()
         plot_mobility_data(name[:-4], plot_surface)
-        """
-        start_date = datetime.date(2020, 2, 28)  #
-        delta = datetime.timedelta(days=10)
-        dates = []
-        for i in range(51):
-            dates.append(start_date)
-            start_date += delta
-        dates = [i.strftime("%d-%b") for i in dates]  # aligning dates on xaxis
-        plot_surface.set_xticklabels(dates[1:])
-        """
         plot_days_between_lockdown_to_peak(axs[1])
         axs[1].legend()
         plot_surface.legend()
 
 
+        days_lockdown_to_peak.append((name, (PEAK_INFECTIONS - LOCKDOWN_START)))
         #plt.tight_layout()
         fig.set_size_inches(16, 9)
         #plt.savefig(f"Predictions/{name[:-4]}.png", bbox_inches  = 'tight', dpi = 100)
 #        plt.savefig(f"Predictions/{name[:-4]}_{end_date}.pdf", bbox_inches  = 'tight', dpi = 100)
-        #print(f"Saved {name}")
+        print(f"Saved {name}")
         plt.show()
+
+    countries = [i[0][:-4] for i in days_lockdown_to_peak]
+    days = [i[1] for i in days_lockdown_to_peak]
+    plt.bar(countries, days, color = "C0")
+    plt.axhline(np.mean(days), ls='--', label='Mean = ' + str(np.mean(days)), c = "C1")
+    plt.ylabel("Days from Lockdown to Peak in Infections")
+    plt.xlabel("Countries")
+    plt.legend()
+    plt.show()
